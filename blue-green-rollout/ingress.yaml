@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rollouts-demo-stable
+  namespace: lessons
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "it-incubator-common-acme-issuer"
+spec:
+  tls:
+    - hosts:
+        - lessons.staging.it-incubator.ru
+      secretName: lessons-certificate-secret
+  rules:
+    - host: lessons.staging.it-incubator.ru
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rollouts-demo-active
+                port:
+                  number: 4565

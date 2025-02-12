@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blue-green
+  namespace: lessons
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blue-green
+  template:
+    metadata:
+      labels:
+        app: blue-green
+    spec:
+      imagePullSecrets:
+        - name: dockerhub-reg-secret
+      containers:
+        - name: blue-green
+          image: abazuntts/blue-green:2  # Здесь указываем новую версию
+          ports:
+            - containerPort: 4565
+          startupProbe:                  # Проверяет старт приложения
+            httpGet:
+              path: /health
+              port: 4565
+            initialDelaySeconds: 5       # Ждём 5 сек перед первой проверкой
+            periodSeconds: 10            # Проверяем каждые 10 сек
+            failureThreshold: 6          # Если 6 раз подряд не ответил → Pod рестартится
+          readinessProbe:                # Проверяем, готов ли Pod
+            httpGet:
+              path: /health
+              port: 4565
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:                 # Проверяем, жив ли Pod
+            httpGet:
+              path: /health
+              port: 4565
+            initialDelaySeconds: 10
+            periodSeconds: 20

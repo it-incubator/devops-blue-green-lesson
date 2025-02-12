@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: rollouts-demo
+  namespace: lessons
+spec:
+  replicas: 1
+  strategy:
+    blueGreen:
+      activeService: rollouts-demo-active    # активный сервис на который идет весь трафик
+      previewService:  rollouts-demo-preview # новый сервис
+      autoPromotionEnabled: true             # автоматическое переключение
+      scaleDownDelaySeconds: 60             # сколько ждать перед тем как убить старую версию
+      autoPromotionSeconds: 20               # сколько ждать перед тем как сделать переключение
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: rollouts-demo
+  template:
+    metadata:
+      labels:
+        app: rollouts-demo
+    spec:
+      imagePullSecrets:
+        - name: dockerhub-reg-secret
+      containers:
+        - name: rollouts-demo
+          image: abazuntts/blue-green:2
+          ports:
+            - name: http
+              containerPort: 4565
+              protocol: TCP
+          startupProbe:                       # Проверяет старт приложения
+            httpGet:
+              path: /health
+              port: 4565
+            initialDelaySeconds: 5            # Ждём 5 сек перед первой проверкой
+            periodSeconds: 10                 # Проверяем каждые 10 сек
+            failureThreshold: 6               # Если 6 раз подряд не ответил → Pod рестартится
+          readinessProbe:                     # Проверяем, готов ли Pod
+            httpGet:
+              path: /health
+              port: 4565
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:                      # Проверяем, жив ли Pod
+            httpGet:
+              path: /health
+              port: 4565
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              memory: 32Mi
+              cpu: 5m
